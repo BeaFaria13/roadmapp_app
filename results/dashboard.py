@@ -1,15 +1,16 @@
 import streamlit as st
 import pandas as pd
+import math
 import plotly_express as px
-import plotly.graph_objs as go
+import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
 from functions import *
-from streamlit_extras.colored_header import colored_header
 from streamlit_extras.metric_cards import style_metric_cards
-from streamlit_extras.grid import grid
 from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.row import row
-from streamlit_extras.stateful_button import button
+import plotly.io as pio
+import io
+import base64
 
 
 #import files
@@ -98,89 +99,145 @@ if selected == 'Dashboard':
         
         st.subheader('Média das pontuações por transformação')
 
-        table, radar_chart=st.columns((3,5),gap='small',vertical_alignment='top')
+        table, radar_chart=st.columns((3,5),gap='medium',vertical_alignment='top')
         with radar_chart:
-            avg_per_transf=average_per_transformation(answ_df,company,participant)
+
+            def create_polar_chart(toggle_values):
+                avg_per_transf=average_per_transformation(answ_df,company,participant)
+                
+                # 1. create figure where we're going to add our chart
+                fig=go.Figure()
+
+                # 2. set the text size and shape of chart
+                fig.update_layout({'font_size':14})
+                fig.update_polars(gridshape='linear')
+
+                # 3. adapt our data so that both lines can close; we have to add the first element back into our list 
+                r=avg_per_transf['Média'].to_list()
+                r.append(r[0])
+
+                l=avg_per_transf['Nome Transformação'].to_list()
+                l.append(l[0])
+
+                    # 3.1 formatar o texto para não ficar muito comprido
+                l[3]='T4 -Engenharia Focada no <br> Cliente de Ponta a Ponta'
+                l[4]='T5 - Organização Centrada <br> no Ser Humano'
+                l[6]='T7 - Indústria aberta e orientada <br> para a cadeia de valor'
+                l[0]=l[-1]= 'T1 - Tecnologias de <br> Manufatura Avançada'
+
+
+                # 4. define a web chart for the results and for the industry of the future
+                company_results = go.Scatterpolar(
+                    r=r,  
+                    theta=l,
+                    mode='lines+markers+text',                
+                    name=f'{company}',
+
+                    # text=r,
+                    # textposition='middle center',
+                    # textfont=dict(
+                    #     family='Trebuchet MS Black',
+                    #     size=13,        # Change text size
+                    #     color='black'),   # Change text color
+
+                    line=dict(color='#FD6C6A',width=2),
+                    fill='toself',
+                    fillcolor="rgba(255, 0, 0, 0.2)")   
+
+
+                future_industry = go.Scatterpolar(
+                    r=[4]*(len(avg_per_transf['Média'])+1),  
+                    theta=l,
+                    mode='lines+markers',                
+                    name='Indústria do Futuro',
+                    hoverinfo='r',
+                    line=dict(color='#2AC8C5',width=3)
+                    )            
+
+                # 5. add both charts to figure previously defined
+                fig.add_traces([company_results,future_industry])
+
+                if toggle_values:
+                    # Add annotations for each label with background color
+                    annotations = []
+
+                    for i, category in enumerate(avg_per_transf['Média']):
+                        angle = (i * 2 * math.pi / len(avg_per_transf['Média']))- (math.pi / 2) # Angle in radians for each category
+                        annotations.append(
+                            dict(
+                                text=category,  # Text label
+                                xref='paper', yref='paper',  # Positioning reference
+                                x=0.5 + 0.10 * math.cos(angle),  # X position based on angle
+                                y=0.5-((0.5 + 0.37 * math.sin(angle))-0.5),  # Y position based on angle
+                                showarrow=False,
+                                font=dict(family='Trebuchet MS',color="white", size=13),  # Font color
+                                bgcolor="#FD6C6A",  # Background color
+                                bordercolor="white",  # Border color
+                                borderwidth=1,  # Border thickness
+                                borderpad=3  # Padding around text
+                            )
+                        )
+
+                    # 6. update layout with desired changes             
+                    fig.update_layout(
+                        polar=dict(
+                            radialaxis=dict(
+                                visible=True,
+                                range=[0, 5],  # Adjust range based on your data
+                                showticklabels=False,
+                                ticks=''),
+
+                            angularaxis=dict(
+                                showticklabels=True,
+                                rotation=90,
+                                direction='clockwise',
+                                tickfont=dict( size=15, color="black"))),
+
+                            legend=dict(
+                                orientation="h",  # Horizontal legend
+                                yanchor="bottom",  # Align to the bottom of the legend
+                                y=-0.4,            # Move legend above the plot area
+                                xanchor="center", # Align to the center
+                                x=0.5,
+                                font={'size':15}),  # Center the legend
+                                
+                        showlegend=True,
+                        annotations=annotations)
+                else:
+                    # 6. update layout with desired changes             
+                    fig.update_layout(
+                        polar=dict(
+                            radialaxis=dict(
+                                visible=True,
+                                range=[0, 5],  # Adjust range based on your data
+                                showticklabels=False,
+                                ticks=''),
+
+                            angularaxis=dict(
+                                showticklabels=True,
+                                rotation=90,
+                                direction='clockwise',
+                                tickfont=dict(size=15, color="black"))),
+
+                            legend=dict(
+                                orientation="h",  # Horizontal legend
+                                yanchor="bottom",  # Align to the bottom of the legend
+                                y=-0.4,            # Move legend above the plot area
+                                xanchor="center", # Align to the center
+                                x=0.5,
+                                font={'size':15}),  # Center the legend
+                                
+                        showlegend=True)
+                
+                return fig
+
             
-            # 1. create figure where we're going to add our chart
-            fig=go.Figure()
-
-            # 2. set the text size and shape of chart
-            fig.update_layout({'font_size':14})
-            fig.update_polars(gridshape='linear')
-
-            # 3. adapt our data so that both lines can close; we have to add the first element back into our list 
-            r=avg_per_transf['Média'].to_list()
-            r.append(r[0])
-
-            l=avg_per_transf['Nome Transformação'].to_list()
-            l.append(l[0])
-
-                # 3.1 formatar o texto para não ficar muito comprido
-            l[3]='T4 -Engenharia Focada no <br> Cliente  de Ponta a Ponta'
-            l[4]='T5 - Organização Centrada <br> no Ser Humano'
-            l[6]='T7 - Indústria aberta e orientada <br> para a cadeia de valor'
-            l[0]=l[-1]= 'T1 - Tecnologias de <br> Manufatura Avançada'
-
-
-            # 4. define a web chart for the results and for the industry of the future
-            company_results = go.Scatterpolar(
-                r=r,  
-                theta=l,
-                mode='lines+markers+text',                
-                name=f'{company}',
-
-                text=r,
-                textposition='middle center',
-                textfont=dict(
-                    family='Arial Black',
-                    size=12,        # Change text size
-                    color='black'),   # Change text color
-
-                line=dict(color='#FD6C6A',width=2),
-                fill='toself',
-                fillcolor="rgba(255, 0, 0, 0.2)")   
-
-
-            future_industry = go.Scatterpolar(
-                r=[4]*(len(avg_per_transf['Média'])+1),  
-                theta=l,
-                mode='lines+markers',                
-                name='Indústria do Futuro',
-                line=dict(color='#2AC8C5',width=3)
-                )            
-
-            # 5. add both charts to figure previously defined
-            fig.add_traces([company_results,future_industry])
-
-
-
-
-            # 6. update layout with desired changes             
-            fig.update_layout(
-                polar=dict(
-                    radialaxis=dict(
-                        visible=True,
-                        range=[0, 5],  # Adjust range based on your data
-                        showticklabels=False,
-                        ticks=''),
-                    angularaxis=dict(showticklabels=True,rotation=90,direction='clockwise')),
-
-                    legend=dict(
-                        orientation="h",  # Horizontal legend
-                        yanchor="bottom",  # Align to the bottom of the legend
-                        y=-0.3,            # Move legend above the plot area
-                        xanchor="center", # Align to the center
-                        x=0.5,
-                        font={'size':15}),  # Center the legend
-                        
-                showlegend=True,
-                    )
             
             # 7. construct the chart with streamlit
-            st.plotly_chart(fig,key='radar_chart')
+            toggle_values=st.toggle(label=f'Dispor valores no gráfico')
 
-
+            polar_chart=create_polar_chart(toggle_values)
+            st.plotly_chart(polar_chart)
 
 
     
@@ -194,9 +251,15 @@ if selected == 'Dashboard':
             df_average=average_per_transformation(answ_df,company,participant)
             
             st.dataframe(df_average,
-                         column_order=('Transformação','Média','Diferença para indústria do futuro'),
-                            hide_index=True,
-                            use_container_width=True)
+                         column_order=('Nome Transformação','Média','Diferença para indústria do futuro'),
+                         column_config={
+                             "Nome Transformação":st.column_config.TextColumn(
+                                 'Transformação'),
+                            "Diferença para indústria do futuro": st.column_config.NumberColumn(
+                                'Diferença p/ Ind.Futuro')
+                         },
+                         hide_index=True,
+                         use_container_width=True)
 
 # RESPOSTAS
 if selected == 'Respostas':
@@ -283,7 +346,7 @@ if selected == 'Respostas':
         # sort the employees name alphabetically
         df_selection_question=df_selection_question.sort_values('Colaborador')
 
-        col1,col2=st.columns((4,3))
+        col1,col2=st.columns((4,3),gap='medium')
         with col1:
             st.dataframe(scores.query("Transformação ==@transf and Campo==@campo and Categoria==@pergunta.split(':')[0]"),
                             hide_index=True,
@@ -482,11 +545,12 @@ if selected == 'Participantes':
                representar um valor atípico no conjunto das respostas.  
                O colaborador sinalizado deve ser excluído da análise dos resultados. Para isso, elimine o nome do mesmo na barra lateral da aplicação''')
 
-    df=st.dataframe(df_selection.style.map(highlight,subset=pd.IndexSlice[:,['Tempo de resposta']]),
-                column_order=('Colaborador','Função','Email','Hora de início','Hora de conclusão','Tempo de resposta'),
+    df=st.dataframe(df_selection.style.map(highlight,subset='Tempo de resposta'),
+                column_order=('Colaborador','Função',
+                              'Email','Hora de início',
+                              'Hora de conclusão','Tempo de resposta'),
                 hide_index=True,
                 use_container_width=True)
-    
 
 # TRANSFORMAÇÕES
 if selected == 'Transformações':
