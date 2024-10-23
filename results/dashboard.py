@@ -98,7 +98,7 @@ if selected == 'Dashboard':
         
         st.subheader('Média das pontuações por transformação')
 
-        table, radar_chart=st.columns((4,6),gap='small',vertical_alignment='top')
+        table, radar_chart=st.columns((4,5),gap='small',vertical_alignment='top')
         with radar_chart:
             avg_per_transf=average_per_transformation(answ_df,company,participant)
             
