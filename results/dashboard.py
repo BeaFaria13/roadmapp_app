@@ -99,7 +99,7 @@ if selected == 'Dashboard':
         
         st.subheader('Média das pontuações por transformação')
 
-        table, radar_chart=st.columns((4,6),gap='medium',vertical_alignment='top')
+        table, radar_chart=st.columns((3,5),gap='medium',vertical_alignment='top')
         with radar_chart:
 
             def create_polar_chart(toggle_values):
